@@ -170,7 +170,12 @@ def save_dfs_as_xl(
             elif series.dtype == "int64":
                 num_format = STYLEBOOK["thousands"]
             elif series.dtype == "float64":
-                num_format = STYLEBOOK["decimal"]
+                if (series.fillna(-9999) % 1  == 0).all():
+                    num_format = STYLEBOOK["thousands"]
+                else:
+                    num_format = STYLEBOOK["decimal"]
+            else:
+                num_format = None
 
             worksheet.set_column(
                 first_col=idx + 1,
