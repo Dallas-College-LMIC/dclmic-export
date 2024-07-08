@@ -1,2 +1,3 @@
 .devenv
 .direnv
+.mypy_cache/3.11
