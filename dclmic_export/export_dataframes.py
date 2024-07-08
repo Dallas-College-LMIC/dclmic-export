@@ -117,7 +117,8 @@ def save_dfs_as_xl(
         )
 
         lastcol = xlsxwriter.utility.xl_col_to_name(len(bdf.columns))
-        title = f"{bdf.name}"
+
+        title = friendlize(bdf.name) if friendly_names else bdf.name
         if len(bdf.columns) > 1:
             worksheet.merge_range(f"B2:{lastcol}2", title, merge_format)
         else:
