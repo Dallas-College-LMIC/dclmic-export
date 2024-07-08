@@ -11,11 +11,11 @@ def friendlize(s: str) -> str:
 
 def save_dfs_as_xl(
     list_of_frames: list[pd.DataFrame],
-    col_format: dict = {},
+    col_format: dict[str, dict[str,str]] = {},
     path: str = "./",
     file_name: str = "file",
     sheet_names: list[str] = [],
-    tab_names: dict = {},
+    tab_names: dict[str, str] = {},
     friendly_names: bool = True,
 ) -> None:
     """
