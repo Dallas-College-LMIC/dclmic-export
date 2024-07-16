@@ -9,25 +9,26 @@ def friendlize(s: str) -> str:
     return " ".join([x.capitalize() for x in split])
 
 
-def save_dataframe_as_excel_sheets(
+def save_dfs_as_xl(
     list_of_frames: list[pd.DataFrame],
-    col_format: dict = {},
-    outpath: str = ".",
-    outname: str = "file",
+    col_format: dict[str, dict[str,str]] = {},
+    path: str = "./",
+    file_name: str = "file",
     sheet_names: list[str] = [],
-    tab_names: dict = {},
+    tab_names: dict[str, str] = {},
+    friendly_names: bool = True,
 ) -> None:
     """
     Save a list of pandas DataFrames as sheets in an Excel file.
 
     Parameters:
-    - list_of_frames: a list of pandas DataFrames to save as sheets.
-    - outpath: the path to the directory where the Excel file will be saved.
-    - outname: the name of the Excel file.
+    - list_of_frames: a list of pandas DataFrames to save as sheets. Each DataFrame will be saved as a separate sheet in the same file.
+    - path: the path to the directory where the Excel file will be saved.
+    - file_name: the name of the Excel file (without the .xlsx extension).
     - sheet_names: (optional) a list of names for the sheets.
         - If not provided, the default sheet names will be used.
     - tab_names: (optional) a dictionary mapping sheet names to custom tab names, for sheets where the tab name should be different from the title.
-
+    - friendly_names: (optional) a boolean indicating whether to format the column names as friendly names (e.g., "column_name" -> "Column Name").
     Returns:
     None
     """
@@ -35,7 +36,7 @@ def save_dataframe_as_excel_sheets(
     # loop through
 
     # create fullname
-    name = outpath + r"\\" + outname + ".xlsx"
+    name = path + file_name + ".xlsx"
 
     print(f"Saving to {name}...")
     # set up writer object
@@ -67,6 +68,8 @@ def save_dataframe_as_excel_sheets(
 
         # excel ui breaks if sheet names are longer than 31 characters
 
+        if friendly_names:
+            sheet_name = friendlize(sheet_name)
         worksheet = workbook.add_worksheet(sheet_name)
         bdf.to_excel(
             writer,
@@ -98,7 +101,7 @@ def save_dataframe_as_excel_sheets(
 
         # apply header format to each column
         for col_num, value in enumerate(bdf.columns.values):
-            worksheet.write(2, col_num + 1, friendlize(value), header_format)
+            worksheet.write(2, col_num + 1, friendlize(value) if friendly_names else value, header_format)
 
         # add title merged cell
         merge_format = workbook.add_format(
@@ -114,7 +117,8 @@ def save_dataframe_as_excel_sheets(
         )
 
         lastcol = xlsxwriter.utility.xl_col_to_name(len(bdf.columns))
-        title = f"{bdf.name}"
+
+        title = friendlize(bdf.name) if friendly_names else bdf.name
         if len(bdf.columns) > 1:
             worksheet.merge_range(f"B2:{lastcol}2", title, merge_format)
         else:
@@ -160,6 +164,17 @@ def save_dataframe_as_excel_sheets(
                     num_format = workbook.add_format({"num_format": style})
                 # This basically checks if the format passed in is one in the stylebook. If not, it assumes that it's a custom format code and uses that.
                 # This way we can keep the stylebook to the most used styles and just apply custom formats to columns we want to customize as needed, instead of bloating the stylebook.
+            elif '%' in col_name or 'percent' in col_name.lower():
+                num_format = STYLEBOOK["percent"]
+            elif 'income' in col_name.lower() or 'salary' in col_name.lower() or 'wage' in col_name.lower():
+                num_format = STYLEBOOK["currency"]
+            elif series.dtype == "int64":
+                num_format = STYLEBOOK["thousands"]
+            elif series.dtype == "float64":
+                if (series.fillna(-9999) % 1  == 0).all():
+                    num_format = STYLEBOOK["thousands"]
+                else:
+                    num_format = STYLEBOOK["decimal"]
             else:
                 num_format = None
 
