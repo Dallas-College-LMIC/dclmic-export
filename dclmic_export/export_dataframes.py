@@ -3,6 +3,12 @@ import xlsxwriter
 import gspread as gs
 from typing import Iterable
 
+CURRENCY_KEYWORDS = [
+    'income',
+    'salary',
+    'wage',
+    'compensation'
+]
 
 def friendlize(s: str) -> str:
     split = s.lower().split("_")
@@ -166,7 +172,7 @@ def save_dfs_as_xl(
                 # This way we can keep the stylebook to the most used styles and just apply custom formats to columns we want to customize as needed, instead of bloating the stylebook.
             elif '%' in col_name or 'percent' in col_name.lower():
                 num_format = STYLEBOOK["percent"]
-            elif 'income' in col_name.lower() or 'salary' in col_name.lower() or 'wage' in col_name.lower():
+            elif col_name.lower() in CURRENCY_KEYWORDS:
                 num_format = STYLEBOOK["currency"]
             elif series.dtype == "int64":
                 num_format = STYLEBOOK["thousands"]
