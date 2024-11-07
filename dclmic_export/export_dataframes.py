@@ -1,7 +1,7 @@
 import pandas as pd
 import xlsxwriter
 import gspread as gs
-from typing import Iterable
+from typing import Iterable, List, Dict, Any
 
 CURRENCY_KEYWORDS = [
     'income',
@@ -10,17 +10,50 @@ CURRENCY_KEYWORDS = [
     'compensation'
 ]
 
+PERCENT_KEYWORDS = [
+    '%'
+    'percent',
+    'rate',
+    'growth',
+    'change',
+    'increase',
+    'decrease',
+    'margin',
+    'share',
+]
+
 def friendlize(s: str) -> str:
     split = s.lower().split("_")
     return " ".join([x.capitalize() for x in split])
 
+def dict_to_df_for_xl(dict: Dict[str, Any]) -> pd.DataFrame:
+
+    for key, value in dict.items():
+        if any(s in key.lower() for s in PERCENT_KEYWORDS):
+            dict[key] = f"{value:.2%}"
+        elif any(s in key.lower() for s in CURRENCY_KEYWORDS):
+            dict[key] = f"${value:,.2f}"
+        elif isinstance(value, (int, float)):
+            dict[key] = f"{value:,.2f}"
+
+    df = (
+        pd.DataFrame.from_dict(dict, orient="index")
+        .reset_index()
+        .rename(columns={0: "Value"})
+    )
+    df["Category"] = df["index"]
+    df = df[["Category", "Value"]]
+
+
+
+    return df
 
 def save_dfs_as_xl(
     list_of_frames: list[pd.DataFrame],
     col_format: dict[str, dict[str,str]] = {},
     path: str = "./",
     file_name: str = "file",
-    sheet_names: list[str] = [],
+    sheet_titles: list[str] = [],
     tab_names: dict[str, str] = {},
     friendly_names: bool = True,
 ) -> None:
@@ -29,12 +62,16 @@ def save_dfs_as_xl(
 
     Parameters:
     - list_of_frames: a list of pandas DataFrames to save as sheets. Each DataFrame will be saved as a separate sheet in the same file.
-    - path: the path to the directory where the Excel file will be saved.
-    - file_name: the name of the Excel file (without the .xlsx extension).
-    - sheet_names: (optional) a list of names for the sheets.
+    - col_format: (optional) a dictionary mapping sheet names to dictionaries mapping column names to Excel number formats.
+    - path (optional): the path to the directory where the Excel file will be saved.
+        - Default is the current directory.
+    - file_name (optional): the name of the Excel file (without the .xlsx extension).
+        - Default is "file".
+    - sheet_titles: (optional) a list of names for the sheets.
         - If not provided, the default sheet names will be used.
     - tab_names: (optional) a dictionary mapping sheet names to custom tab names, for sheets where the tab name should be different from the title.
     - friendly_names: (optional) a boolean indicating whether to format the column names as friendly names (e.g., "column_name" -> "Column Name").
+        - Default is True.
     Returns:
     None
     """
@@ -62,12 +99,12 @@ def save_dfs_as_xl(
     }
 
     for i, bdf in enumerate(list_of_frames):
-        if sheet_names:
-            bdf.name = sheet_names[i]
+        if sheet_titles:
+            bdf.name = sheet_titles[i]
             if bdf.name in tab_names:
                 sheet_name = tab_names[bdf.name][:31]
             else:
-                sheet_name = sheet_names[i][:31]
+                sheet_name = sheet_titles[i][:31]
         else:
             bdf.name = f"Sheet{i}"
             sheet_name = bdf.name
@@ -170,9 +207,9 @@ def save_dfs_as_xl(
                     num_format = workbook.add_format({"num_format": style})
                 # This basically checks if the format passed in is one in the stylebook. If not, it assumes that it's a custom format code and uses that.
                 # This way we can keep the stylebook to the most used styles and just apply custom formats to columns we want to customize as needed, instead of bloating the stylebook.
-            elif '%' in col_name or 'percent' in col_name.lower():
+            elif any(s in col_name.lower() for s in PERCENT_KEYWORDS):
                 num_format = STYLEBOOK["percent"]
-            elif col_name.lower() in CURRENCY_KEYWORDS:
+            elif any(s in col_name.lower() for s in CURRENCY_KEYWORDS):
                 num_format = STYLEBOOK["currency"]
             elif series.dtype == "int64":
                 num_format = STYLEBOOK["thousands"]
@@ -300,7 +337,7 @@ def upload_to_sql(
         try:
             print("Trying to drop old table.")
             crsr.execute(
-                f"""IF EXISTS(SELECT * FROM sys.tables WHERE name like '%{table_name}%')  
+                f"""IF EXISTS(SELECT * FROM sys.tables WHERE name like '%{table_name}%')
             DROP TABLE [lmdw].[{schema}].[{table_name}]"""
             )
             con.commit()
@@ -312,7 +349,7 @@ def upload_to_sql(
         try:
             print("Creating new sql table...")
             crsr.execute(
-                f"""IF NOT EXISTS(SELECT * FROM sys.tables WHERE name like '{table_name}') 
+                f"""IF NOT EXISTS(SELECT * FROM sys.tables WHERE name like '{table_name}')
             CREATE TABLE [lmdw].[{schema}].[{table_name}](
                 {",".join(format_columns)})"""
             )
@@ -331,7 +368,7 @@ def upload_to_sql(
             if index % chunk_print_size == 0:
                 print(f"{index} out of {len(df)}")
             crsr.execute(
-                f"""INSERT INTO [lmdw].[{schema}].[{table_name}] 
+                f"""INSERT INTO [lmdw].[{schema}].[{table_name}]
             ({",".join(columns)}) values ({",".join(["?"] * len(columns))})""",
                 row[1:].tolist(),
             )
@@ -376,9 +413,9 @@ def make_table_spatial(
         print("Setting spatial index...")
         crsr.execute(
             f"""CREATE SPATIAL INDEX spatial_idx_{table_name.lower()} ON [LMDW].[{schema}].[{table_name}](geom)
-                            WITH 
-                            ( 
-                                    BOUNDING_BOX= (xmin=-99, ymin=32, xmax=-96, ymax=33) 
+                            WITH
+                            (
+                                    BOUNDING_BOX= (xmin=-99, ymin=32, xmax=-96, ymax=33)
                             );"""
         )
     except Exception as e:
