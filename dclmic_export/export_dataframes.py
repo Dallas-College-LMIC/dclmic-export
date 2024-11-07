@@ -11,7 +11,7 @@ CURRENCY_KEYWORDS = [
 ]
 
 PERCENT_KEYWORDS = [
-    '%'
+    '%',
     'percent',
     'rate',
     'growth',
