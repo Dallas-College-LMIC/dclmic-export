@@ -5,7 +5,7 @@ Python library to facilitate exporing pandas dataframes to excel sheets.
 ## Installation
 
 ``` bash
-pip install dclmic-export
+pip install git+https://github.com/Dallas-College-LMIC/dclmic-export
 ```
 
 ## Usage
