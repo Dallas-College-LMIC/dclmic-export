@@ -91,6 +91,7 @@ def save_dfs_as_xl(
     workbook = writer.book
 
     STYLEBOOK = {
+        "year": workbook.add_format({"num_format": "####"}),
         "thousands": workbook.add_format({"num_format": "#,###"}),
         "currency": workbook.add_format({"num_format": "$#,##0.00"}),
         "currency_int": workbook.add_format({"num_format": "$#,##0"}),
@@ -208,6 +209,8 @@ def save_dfs_as_xl(
                     num_format = workbook.add_format({"num_format": style})
                 # This basically checks if the format passed in is one in the stylebook. If not, it assumes that it's a custom format code and uses that.
                 # This way we can keep the stylebook to the most used styles and just apply custom formats to columns we want to customize as needed, instead of bloating the stylebook.
+            elif "year" in col_name.lower():
+                num_format = STYLEBOOK["year"]
             elif any(s in col_name.lower() for s in PERCENT_KEYWORDS):
                 num_format = STYLEBOOK["percent"]
             elif any(s in col_name.lower() for s in CURRENCY_KEYWORDS):
