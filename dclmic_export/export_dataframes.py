@@ -8,7 +8,8 @@ CURRENCY_KEYWORDS = [
     'salary',
     'wage',
     'compensation',
-    'earnings'
+    'earnings',
+    'rent'
 ]
 
 PERCENT_KEYWORDS = [
